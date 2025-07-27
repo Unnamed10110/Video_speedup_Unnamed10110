@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Icons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .icon-container {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background: white;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>TikTok Speedup Extension Icons</h1>
+    <p>Click the button below to generate and download the icon files:</p>
+    
+    <button onclick="generateIcons()">Generate Icons</button>
+    
+    <div id="icons"></div>
+
+    <script>
+        function generateIcons() {
+            const sizes = [16, 48, 128];
+            const container = document.getElementById('icons');
+            container.innerHTML = '';
+
+            sizes.forEach(size => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // Create gradient background
+                const gradient = ctx.createLinearGradient(0, 0, size, size);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, size, size);
+
+                // Draw play button with speed lines
+                ctx.fillStyle = 'white';
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const playSize = size * 0.4;
+
+                // Draw play triangle
+                ctx.beginPath();
+                ctx.moveTo(centerX - playSize * 0.3, centerY - playSize * 0.4);
+                ctx.lineTo(centerX + playSize * 0.4, centerY);
+                ctx.lineTo(centerX - playSize * 0.3, centerY + playSize * 0.4);
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw speed lines
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = size * 0.05;
+                ctx.lineCap = 'round';
+
+                for (let i = 0; i < 3; i++) {
+                    const x = centerX + playSize * 0.6 + i * size * 0.15;
+                    const y = centerY - playSize * 0.2 + i * size * 0.1;
+                    const length = size * 0.2 - i * size * 0.05;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + length, y);
+                    ctx.stroke();
+                }
+
+                // Create download link
+                const link = document.createElement('a');
+                link.download = `icon${size}.png`;
+                link.href = canvas.toDataURL();
+                
+                const div = document.createElement('div');
+                div.className = 'icon-container';
+                div.innerHTML = `
+                    <canvas id="canvas${size}"></canvas>
+                    <br>
+                    <a href="${link.href}" download="icon${size}.png">Download ${size}x${size}</a>
+                `;
+                container.appendChild(div);
+
+                // Copy canvas to the div
+                const divCanvas = div.querySelector('canvas');
+                divCanvas.width = size;
+                divCanvas.height = size;
+                divCanvas.getContext('2d').drawImage(canvas, 0, 0);
+            });
+        }
+    </script>
+</body>
+</html> 

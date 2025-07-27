@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Speedup</title>
+    <style>
+        body {
+            width: 320px;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000000;
+            color: #ffffff;
+            margin: 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .speed-display {
+            background: #111111;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .current-speed {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .speed-label {
+            font-size: 12px;
+            color: #888888;
+        }
+
+        .speed-slider-container {
+            margin: 15px 0;
+        }
+
+        .speed-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #51cf66;
+            cursor: pointer;
+        }
+
+        .speed-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #51cf66;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #888888;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            background: #111111;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #222222;
+            border-color: #444444;
+        }
+
+        .btn:active {
+            background: #000000;
+        }
+
+        .btn.toggle {
+            background: #51cf66;
+            border-color: #51cf66;
+        }
+
+        .btn.toggle:hover {
+            background: #40c057;
+        }
+
+        .slow-speed-display {
+            background: #111111;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .slow-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .feature-toggles {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .toggle-container {
+            flex: 1;
+            text-align: center;
+        }
+
+        .toggle-label {
+            font-size: 11px;
+            color: #888888;
+            margin-bottom: 5px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333333;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #51cf66;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .instructions {
+            background: #111111;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .instructions h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+
+        .instructions ul {
+            margin: 0;
+            padding-left: 15px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        .keyboard-shortcuts {
+            background: #111111;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+
+        .keyboard-shortcuts h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .shortcut-key {
+            background: #333333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 11px;
+            color: #888888;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ Video Speedup</h1>
+    </div>
+
+    <div class="speed-display">
+        <div class="current-speed" id="currentSpeed">1.0x</div>
+        <div class="speed-label">Speed Up (Right Side)</div>
+        <div class="speed-slider-container">
+            <input type="range" min="0.1" max="4.0" step="0.1" value="2.0" class="speed-slider" id="speedSlider">
+            <div class="slider-labels">
+                <span>0.1x</span>
+                <span>2.0x</span>
+                <span>4.0x</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="resetBtn">Reset Speed</button>
+        <button class="btn" id="cycleBtn">+</button>
+    </div>
+
+    <div class="slow-speed-display">
+        <div class="current-speed" id="currentSlowSpeed">1.0x</div>
+        <div class="speed-label">Slow Down (Left Side)</div>
+        <div class="speed-slider-container">
+            <input type="range" min="0.1" max="4.0" step="0.1" value="2.0" class="speed-slider" id="slowSpeedSlider">
+            <div class="slider-labels">
+                <span>0.1x</span>
+                <span>2.0x</span>
+                <span>4.0x</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="slow-controls">
+        <button class="btn" id="resetSlowBtn">Reset Slow</button>
+        <button class="btn" id="cycleSlowBtn">-</button>
+    </div>
+
+    <div class="feature-toggles">
+        <div class="toggle-container">
+            <div class="toggle-label">Floating Panel</div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="floatingPanelToggle">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="toggle-container">
+            <div class="toggle-label">Speed Lock</div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="speedLockToggle">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="keyboard-shortcuts">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <div class="shortcut-item">
+            <span>Increase Speed</span>
+            <span class="shortcut-key">+</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Decrease Slow Speed</span>
+            <span class="shortcut-key">-</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Emergency Stop</span>
+            <span class="shortcut-key">Space</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Toggle Floating Panel</span>
+            <span class="shortcut-key">F</span>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h3>How to use:</h3>
+        <ul>
+            <li>Works on TikTok, YouTube, Vimeo, Twitch, and Instagram</li>
+            <li>Use sliders or buttons to set your desired speeds</li>
+            <li>Hold left click on the right side to speed up</li>
+            <li>Hold left click on the left side to slow down</li>
+            <li>Video changes speed while you're holding</li>
+            <li>Release to return to normal speed</li>
+            <li>Enable Speed Lock to maintain speed across videos</li>
+        </ul>
+    </div>
+
+    <div class="status" id="status">
+        Extension active on TikTok
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html> 

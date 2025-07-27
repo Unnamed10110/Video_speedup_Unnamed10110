@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Video Speedup",
+  "version": "1.0",
+  "description": "Speed up videos on TikTok, YouTube, Vimeo, Twitch, and Instagram by clicking on different sides of the video player",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.tiktok.com/*",
+    "https://www.youtube.com/*",
+    "https://vimeo.com/*",
+    "https://www.twitch.tv/*",
+    "https://www.instagram.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.tiktok.com/*",
+        "https://www.youtube.com/*",
+        "https://vimeo.com/*",
+        "https://www.twitch.tv/*",
+        "https://www.instagram.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Video Speedup"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+} 
