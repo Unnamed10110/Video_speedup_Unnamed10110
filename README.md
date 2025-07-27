@@ -60,6 +60,12 @@ The extension uses a unified speed sequence that both speed-up and slow-down mod
 *Coming soon...*
 
 ## Usage
+<img width="375" height="1015" alt="image" src="https://github.com/user-attachments/assets/d698e9c4-93fd-4967-b476-52cc4c88b6b9" />
+<img width="1913" height="834" alt="image" src="https://github.com/user-attachments/assets/5dfc696d-b512-48cc-a5b4-8618a938e977" />
+<img width="530" height="142" alt="image" src="https://github.com/user-attachments/assets/488f2f9a-023c-4912-85c3-3a94e1e47026" />
+
+
+
 
 ### Basic Usage
 
