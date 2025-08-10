@@ -1035,6 +1035,11 @@
         
         // Configurar el event listener para el scroll del mouse (control de volumen)
         document.addEventListener('wheel', function(event) {
+            // Deshabilitar control de volumen en TikTok
+            if (getPlatform() === 'tiktok') {
+                return;
+            }
+            
             // Verificar si el mouse está sobre un video
             const videos = findVideos();
             let isOverVideo = false;
