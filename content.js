@@ -11,6 +11,11 @@
     let currentSpeedIndex = 4; // Empezar en índice 4 (2.0x) - solo para ciclar
     let currentSlowSpeedIndex = 2; // Empezar en índice 2 (0.5x) - solo para ciclar
     
+    // Control de volumen
+    let currentVolume = 1.0; // Por defecto 100% de volumen
+    let originalVolumes = new Map(); // Guardar volúmenes originales de los videos
+    let isVolumeControlActive = false; // Si el control de volumen está activo
+    
     // Secuencia de velocidad para teclas + y -
     const speedSequence = [0.1, 0.25, 0.5, 0.8, 1.0, 1.5, 1.8, 2.0, 2.1, 2.5, 3.0, 3.5, 4.0];
     let currentSpeedSequenceIndex = 7; // Empezar en índice 7 (2.0x)
@@ -105,14 +110,75 @@
                 
             case 'twitch':
                 const twitchSelectors = [
+                    // Twitch-specific selectors for current versions
+                    'video[data-a-target="twitch-video"]',
                     'video[class*="video-player"]',
                     'video[class*="player"]',
                     'video[class*="video"]',
+                    // Fallback selectors for different Twitch layouts
+                    'video[class*="twitch"]',
+                    'video[class*="stream"]',
+                    'video[class*="broadcast"]',
+                    // Generic video selector as last resort
                     'video'
                 ];
+                
+                // Try to find videos with specific selectors first
                 for (const selector of twitchSelectors) {
                     videos = document.querySelectorAll(selector);
-                    if (videos.length > 0) break;
+                    if (videos.length > 0) {
+                        // Filter out small/thumbnail videos for Twitch
+                        const mainVideos = Array.from(videos).filter(video => {
+                            const rect = video.getBoundingClientRect();
+                            // Only consider videos that are reasonably sized (likely main player)
+                            return rect.width > 300 && rect.height > 200;
+                        });
+                        if (mainVideos.length > 0) {
+                            videos = mainVideos;
+                            break;
+                        }
+                    }
+                }
+                
+                // If no videos found with selectors, try alternative methods for Twitch
+                if (videos.length === 0) {
+                    // Look for video elements within common Twitch containers
+                    const twitchContainers = [
+                        '[data-a-target="video-player"]',
+                        '[class*="video-player"]',
+                        '[class*="player"]',
+                        '[class*="stream"]',
+                        '[class*="broadcast"]'
+                    ];
+                    
+                    for (const containerSelector of twitchContainers) {
+                        const containers = document.querySelectorAll(containerSelector);
+                        for (const container of containers) {
+                            const videoInContainer = container.querySelector('video');
+                            if (videoInContainer) {
+                                const rect = videoInContainer.getBoundingClientRect();
+                                if (rect.width > 300 && rect.height > 200) {
+                                    videos = [videoInContainer];
+                                    break;
+                                }
+                            }
+                        }
+                        if (videos.length > 0) break;
+                    }
+                }
+                
+                // Debug logging for Twitch
+                if (videos.length === 0) {
+                    console.log('🎮 Twitch: No videos found with current selectors');
+                    // Log all video elements on the page for debugging
+                    const allVideos = document.querySelectorAll('video');
+                    console.log(`🎮 Twitch: Found ${allVideos.length} total video elements on page`);
+                    allVideos.forEach((video, index) => {
+                        const rect = video.getBoundingClientRect();
+                        console.log(`🎮 Twitch: Video ${index}: classes="${video.className}", size=${rect.width}x${rect.height}, data-attributes="${video.getAttributeNames().filter(attr => attr.startsWith('data-')).join(', ')}"`);
+                    });
+                } else {
+                    console.log(`🎮 Twitch: Successfully found ${videos.length} video(s)`);
                 }
                 break;
                 
@@ -152,7 +218,12 @@
         if (videoDetectionInterval) {
             clearInterval(videoDetectionInterval);
         }
-        videoDetectionInterval = setInterval(debouncedVideoDetection, 1000);
+        
+        // Usar detección más agresiva para Twitch
+        const platform = getPlatform();
+        const detectionInterval = platform === 'twitch' ? 500 : 1000; // 500ms para Twitch, 1000ms para otros
+        
+        videoDetectionInterval = setInterval(debouncedVideoDetection, detectionInterval);
     }
 
     // Función para manejar videos nuevos
@@ -181,13 +252,20 @@
             // Aplicar velocidad inmediatamente
             video.playbackRate = speed;
             
-            // Para YouTube, aplicar velocidad múltiples veces con pequeños retrasos
-            if (getPlatform() === 'youtube') {
-                // Aplicar velocidad múltiples veces con pequeños retrasos
+            // Para YouTube y Twitch, aplicar velocidad múltiples veces con pequeños retrasos
+            const platform = getPlatform();
+            if (platform === 'youtube' || platform === 'twitch') {
+                // Aplicar velocidad múltiples veces con pequeños retrasos para mayor persistencia
                 setTimeout(() => { video.playbackRate = speed; }, 10);
                 setTimeout(() => { video.playbackRate = speed; }, 50);
                 setTimeout(() => { video.playbackRate = speed; }, 100);
                 setTimeout(() => { video.playbackRate = speed; }, 200);
+                // Para Twitch, aplicar adicionalmente con más retrasos
+                if (platform === 'twitch') {
+                    setTimeout(() => { video.playbackRate = speed; }, 300);
+                    setTimeout(() => { video.playbackRate = speed; }, 500);
+                    setTimeout(() => { video.playbackRate = speed; }, 1000);
+                }
             }
             
             showSpeedIndicator(speed);
@@ -230,14 +308,17 @@
             }
             
             const interval = setInterval(() => {
-                videos.forEach(video => {
-                    enforceSpeed(video, currentSpeed);
-                });
+                // Solo forzar velocidad si el mouse sigue presionado
+                if (isSpeedActive) {
+                    videos.forEach(video => {
+                        enforceSpeed(video, currentSpeed);
+                    });
+                }
             }, 100);
             
             window.speedEnforcementIntervals.push(interval);
             
-            // console.log(`Activando velocidad: currentSpeed = ${currentSpeed}x, videos encontrados: ${videos.length}`);
+            console.log(`🎯 Speed activated: ${currentSpeed}x`);
         }
     }
 
@@ -251,7 +332,6 @@
             videos.forEach(video => {
                 if (!originalSpeeds.has(video)) {
                     originalSpeeds.set(video, video.playbackRate);
-                    // console.log(`Velocidad original guardada: ${video.playbackRate}x`);
                 }
                 setVideoSpeed(video, currentSlowSpeed);
             });
@@ -262,14 +342,17 @@
             }
             
             const interval = setInterval(() => {
-                videos.forEach(video => {
-                    enforceSpeed(video, currentSlowSpeed);
-                });
+                // Solo forzar velocidad si el mouse sigue presionado
+                if (isSlowActive) {
+                    videos.forEach(video => {
+                        enforceSpeed(video, currentSlowSpeed);
+                    });
+                }
             }, 100);
             
             window.speedEnforcementIntervals.push(interval);
             
-            // console.log(`Activando velocidad lenta: currentSlowSpeed = ${currentSlowSpeed}x, videos encontrados: ${videos.length}`);
+            console.log(`🎯 Slow speed activated: ${currentSlowSpeed}x`);
         }
     }
 
@@ -281,12 +364,24 @@
             isSlowActive = false;
             
             videos.forEach(video => {
-                const originalSpeed = originalSpeeds.get(video) || 1.0;
                 const wasPlaying = !video.paused;
                 const currentTime = video.currentTime;
                 
-                // Restaurar velocidad original
-                video.playbackRate = originalSpeed;
+                // Siempre restaurar a velocidad normal (1.0x) cuando se suelta
+                video.playbackRate = 1.0;
+                
+                // Para YouTube y Twitch, aplicar múltiples veces para asegurar que se mantenga
+                const platform = getPlatform();
+                if (platform === 'youtube' || platform === 'twitch') {
+                    setTimeout(() => { video.playbackRate = 1.0; }, 10);
+                    setTimeout(() => { video.playbackRate = 1.0; }, 50);
+                    setTimeout(() => { video.playbackRate = 1.0; }, 100);
+                    setTimeout(() => { video.playbackRate = 1.0; }, 200);
+                    if (platform === 'twitch') {
+                        setTimeout(() => { video.playbackRate = 1.0; }, 300);
+                        setTimeout(() => { video.playbackRate = 1.0; }, 500);
+                    }
+                }
                 
                 // Asegurar que el video continúe reproduciéndose
                 if (wasPlaying && video.paused) {
@@ -294,6 +389,7 @@
                     video.play().catch(e => console.log('No se pudo mantener el estado de reproducción:', e));
                 }
                 
+                // Limpiar velocidad original guardada
                 originalSpeeds.delete(video);
             });
             
@@ -309,7 +405,7 @@
                 indicator.remove();
             }
             
-            // console.log('Velocidad desactivada - vuelta a velocidad normal');
+            console.log('🎯 Speed deactivated - returned to normal speed (1.0x)');
         }
     }
 
@@ -352,7 +448,7 @@
     }
 
     // Función para mostrar indicador de velocidad
-    function showSpeedIndicator(speed, type = 'Velocidad') {
+    function showSpeedIndicator(speed, type = 'Speed') {
         let indicator = document.getElementById('speedIndicator');
         if (!indicator) {
             indicator = document.createElement('div');
@@ -376,7 +472,179 @@
             `;
             document.body.appendChild(indicator);
         }
-        indicator.textContent = `${type}: ${speed}x`;
+        
+        // Handle special case for "Hold 500ms..." text
+        if (speed === 'Hold 500ms...') {
+            indicator.textContent = speed;
+            indicator.style.color = '#ffa500'; // Orange color for hold indicator
+        } else {
+            indicator.textContent = `${type}: ${speed}x`;
+            indicator.style.color = '#51cf66'; // Reset to normal green color
+        }
+    }
+
+    // Función para mostrar indicador de volumen
+    function showVolumeIndicator(volume) {
+        let indicator = document.getElementById('volumeIndicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'volumeIndicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 60px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.9);
+                color: #ff6b6b;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 16px;
+                font-weight: bold;
+                z-index: 10000;
+                border: 2px solid #ff6b6b;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                pointer-events: none;
+                user-select: none;
+                opacity: 1;
+                transition: opacity 0.3s ease;
+            `;
+            document.body.appendChild(indicator);
+        }
+        
+        const volumePercent = Math.round(volume * 100);
+        indicator.textContent = `🔊 Volume: ${volumePercent}%`;
+        
+        // Make indicator visible
+        indicator.style.opacity = '1';
+        
+        // Clear any existing timeout
+        if (indicator.hideTimeout) {
+            clearTimeout(indicator.hideTimeout);
+        }
+        
+        // Auto-hide after 2 seconds
+        indicator.hideTimeout = setTimeout(() => {
+            if (indicator) {
+                indicator.style.opacity = '0';
+                // Remove from DOM after fade out
+                setTimeout(() => {
+                    if (indicator && indicator.parentNode) {
+                        indicator.remove();
+                    }
+                }, 300);
+            }
+        }, 2000);
+    }
+
+    // Función para establecer volumen de video
+    function setVideoVolume(video, volume) {
+        if (video && video.volume !== undefined) {
+            const oldVolume = video.volume;
+            const wasPlaying = !video.paused;
+            const currentTime = video.currentTime;
+            
+            // Aplicar volumen inmediatamente
+            video.volume = Math.max(0, Math.min(1, volume)); // Clamp entre 0 y 1
+            
+            // Para YouTube y Twitch, aplicar volumen múltiples veces con pequeños retrasos
+            const platform = getPlatform();
+            if (platform === 'youtube' || platform === 'twitch') {
+                setTimeout(() => { video.volume = Math.max(0, Math.min(1, volume)); }, 10);
+                setTimeout(() => { video.volume = Math.max(0, Math.min(1, volume)); }, 50);
+                setTimeout(() => { video.volume = Math.max(0, Math.min(1, volume)); }, 100);
+                if (platform === 'twitch') {
+                    setTimeout(() => { video.volume = Math.max(0, Math.min(1, volume)); }, 300);
+                }
+            }
+            
+            showVolumeIndicator(volume);
+            
+            // Asegurar que el video no se pause al cambiar volumen
+            if (wasPlaying && video.paused) {
+                video.currentTime = currentTime;
+                video.play().catch(e => console.log('No se pudo mantener el estado de reproducción:', e));
+            }
+            
+            console.log(`🔊 Video volume changed from ${oldVolume} to ${volume}`);
+        }
+    }
+
+    // Función para activar control de volumen (mantener clic en el centro)
+    function activateVolumeControl() {
+        const videos = findVideos();
+        if (videos.length > 0) {
+            isVolumeControlActive = true;
+            
+            videos.forEach(video => {
+                if (!originalVolumes.has(video)) {
+                    originalVolumes.set(video, video.volume);
+                }
+                setVideoVolume(video, currentVolume);
+            });
+            
+            console.log(`🔊 Volume control activated: ${currentVolume}`);
+        }
+    }
+
+    // Función para desactivar control de volumen
+    function deactivateVolumeControl() {
+        const videos = findVideos();
+        if (videos.length > 0) {
+            isVolumeControlActive = false;
+            
+            videos.forEach(video => {
+                const wasPlaying = !video.paused;
+                const currentTime = video.currentTime;
+                
+                // Restaurar volumen original
+                const originalVolume = originalVolumes.get(video) || 1.0;
+                video.volume = originalVolume;
+                
+                // Para YouTube y Twitch, aplicar múltiples veces
+                const platform = getPlatform();
+                if (platform === 'youtube' || platform === 'twitch') {
+                    setTimeout(() => { video.volume = originalVolume; }, 10);
+                    setTimeout(() => { video.volume = originalVolume; }, 50);
+                    setTimeout(() => { video.volume = originalVolume; }, 100);
+                }
+                
+                // Asegurar que el video continúe reproduciéndose
+                if (wasPlaying && video.paused) {
+                    video.currentTime = currentTime;
+                    video.play().catch(e => console.log('No se pudo mantener el estado de reproducción:', e));
+                }
+                
+                originalVolumes.delete(video);
+            });
+            
+            // Ocultar indicador de volumen
+            const indicator = document.getElementById('volumeIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+            
+            console.log('🔊 Control de volumen desactivado - volumen restaurado');
+        }
+    }
+
+    // Función para aumentar volumen
+    function increaseVolume() {
+        currentVolume = Math.min(1.0, currentVolume + 0.02);
+        if (isVolumeControlActive) {
+            const videos = findVideos();
+            videos.forEach(video => setVideoVolume(video, currentVolume));
+        }
+        console.log(`🔊 Volume increased to ${currentVolume}`);
+    }
+
+    // Función para disminuir volumen
+    function decreaseVolume() {
+        currentVolume = Math.max(0.0, currentVolume - 0.02);
+        if (isVolumeControlActive) {
+            const videos = findVideos();
+            videos.forEach(video => setVideoVolume(video, currentVolume));
+        }
+        console.log(`🔊 Volume decreased to ${currentVolume}`);
     }
 
     // Función para crear panel de control flotante
@@ -523,24 +791,28 @@
             if (clickX >= 0 && clickX <= rect.width && clickY >= 0 && clickY <= rect.height) {
                 isMouseDown = true;
                 
-                // Determinar qué lado fue clickeado
+                // Determinar qué área fue clickeada
                 const rightSide = clickX > rect.width * 0.7;
                 const leftSide = clickX < rect.width * 0.3;
                 
                 if (rightSide) {
                     mouseDownAction = 'speed';
+                    // Mostrar indicador de "mantener presionado"
+                    showSpeedIndicator('Hold 500ms...', 'Preparing');
                     mouseDownTimeout = setTimeout(() => {
                         if (isMouseDown) {
                             activateSpeed();
                         }
-                    }, 50);
+                    }, 500);
                 } else if (leftSide) {
                     mouseDownAction = 'slow';
+                    // Mostrar indicador de "mantener presionado"
+                    showSpeedIndicator('Hold 500ms...', 'Preparing');
                     mouseDownTimeout = setTimeout(() => {
                         if (isMouseDown) {
                             activateSlowSpeed();
                         }
-                    }, 50);
+                    }, 500);
                 }
                 
                 event.preventDefault();
@@ -555,6 +827,14 @@
                     clearTimeout(mouseDownTimeout);
                     mouseDownTimeout = null;
                 }
+                
+                // Limpiar indicador de "mantener presionado" si se soltó antes de 500ms
+                const indicator = document.getElementById('speedIndicator');
+                if (indicator && indicator.textContent.includes('Hold 500ms...')) {
+                    indicator.remove();
+                }
+                
+                // Desactivar velocidad
                 deactivateSpeed();
             }
         });
@@ -566,6 +846,14 @@
                     clearTimeout(mouseDownTimeout);
                     mouseDownTimeout = null;
                 }
+                
+                // Limpiar indicador de "mantener presionado" si se soltó antes de 500ms
+                const indicator = document.getElementById('speedIndicator');
+                if (indicator && indicator.textContent.includes('Hold 500ms...')) {
+                    indicator.remove();
+                }
+                
+                // Desactivar velocidad
                 deactivateSpeed();
             }
         });
@@ -588,6 +876,16 @@
         // console.log('Velocidad reseteada a 2.0x');
     }
 
+    // Función para resetear volumen
+    function resetVolume() {
+        currentVolume = 1.0;
+        if (isVolumeControlActive) {
+            const videos = findVideos();
+            videos.forEach(video => setVideoVolume(video, currentVolume));
+        }
+        console.log('🔊 Volumen reseteado a 100%');
+    }
+
     // Función para manejar mensajes del popup
     function handleMessage(request, sender, sendResponse) {
         switch (request.action) {
@@ -595,6 +893,7 @@
                 sendResponse({
                     speed: currentSpeed,
                     slowSpeed: currentSlowSpeed,
+                    volume: currentVolume,
                     floatingPanelEnabled: floatingPanelEnabled,
                     speedLockEnabled: speedLockEnabled
                 });
@@ -602,6 +901,28 @@
             case 'reset':
                 resetSpeed();
                 sendResponse({speed: currentSpeed});
+                break;
+            case 'setVolume':
+                if (request.volume !== undefined) {
+                    currentVolume = Math.max(0, Math.min(1, request.volume));
+                    if (isVolumeControlActive) {
+                        const videos = findVideos();
+                        videos.forEach(video => setVideoVolume(video, currentVolume));
+                    }
+                    sendResponse({volume: currentVolume});
+                }
+                break;
+            case 'increaseVolume':
+                increaseVolume();
+                sendResponse({volume: currentVolume});
+                break;
+            case 'decreaseVolume':
+                decreaseVolume();
+                sendResponse({volume: currentVolume});
+                break;
+            case 'resetVolume':
+                resetVolume();
+                sendResponse({volume: currentVolume});
                 break;
             case 'cycle':
                 cycleSpeed();
@@ -648,7 +969,12 @@
 
     // Función para inicializar la extensión
     function initialize() {
-        // console.log('¡Extensión de Velocidad de Videos cargada! Mantén clic izquierdo en el lado derecho para acelerar, lado izquierdo para desacelerar.');
+        const platform = getPlatform();
+        if (platform === 'twitch') {
+            console.log('🎮 Video Speedup Extension: Twitch mode activated - Enhanced video detection enabled');
+        } else {
+            // console.log('¡Extensión de Velocidad de Videos cargada! Mantén clic izquierdo en el lado derecho para acelerar, lado izquierdo para desacelerar.');
+        }
         
         // Configurar listener de mensajes
         chrome.runtime.onMessage.addListener(handleMessage);
@@ -694,8 +1020,64 @@
                     floatingPanel = null;
                 }
                 // console.log(`Panel flotante ${floatingPanelEnabled ? 'habilitado' : 'deshabilitado'}`);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                increaseVolume();
+                // console.log(`Atajo de teclado (↑): Volumen aumentado a ${currentVolume}`);
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                decreaseVolume();
+                // console.log(`Atajo de teclado (↓): Volumen disminuido a ${currentVolume}`);
             }
         }, true); // Usar fase de captura para interceptar eventos temprano
+        
+        // Configurar el event listener para el scroll del mouse (control de volumen)
+        document.addEventListener('wheel', function(event) {
+            // Verificar si el mouse está sobre un video
+            const videos = findVideos();
+            let isOverVideo = false;
+            let targetVideo = null;
+            
+            for (const video of videos) {
+                const rect = video.getBoundingClientRect();
+                if (event.clientX >= rect.left && event.clientX <= rect.right &&
+                    event.clientY >= rect.top && event.clientY <= rect.bottom) {
+                    isOverVideo = true;
+                    targetVideo = video;
+                    break;
+                }
+            }
+            
+            // Solo activar si el mouse está sobre un video
+            if (!isOverVideo) return;
+            
+            // Prevenir el scroll normal de la página
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Determinar la dirección del scroll
+            const delta = event.deltaY;
+            
+            if (delta > 0) {
+                // Scroll hacia abajo - disminuir volumen
+                decreaseVolume();
+                // Aplicar el volumen directamente al video
+                if (targetVideo) {
+                    setVideoVolume(targetVideo, currentVolume);
+                }
+                console.log('🎵 Mouse wheel: Volume decreased to', currentVolume);
+            } else if (delta < 0) {
+                // Scroll hacia arriba - aumentar volumen
+                increaseVolume();
+                // Aplicar el volumen directamente al video
+                if (targetVideo) {
+                    setVideoVolume(targetVideo, currentVolume);
+                }
+                console.log('🎵 Mouse wheel: Volume increased to', currentVolume);
+            }
+        }, { passive: false });
         
         // Configurar MutationObserver para videos nuevos (carga perezosa)
         const observer = new MutationObserver((mutations) => {
@@ -719,6 +1101,26 @@
         // Detección inicial de videos
         const initialVideos = findVideos();
         handleNewVideos(initialVideos);
+        
+        // Inicialización específica para Twitch
+        if (getPlatform() === 'twitch') {
+            // Para Twitch, hacer una detección adicional después de un retraso
+            // ya que Twitch carga videos dinámicamente
+            setTimeout(() => {
+                const delayedVideos = findVideos();
+                if (delayedVideos.length > 0) {
+                    handleNewVideos(delayedVideos);
+                }
+            }, 2000); // Esperar 2 segundos para videos que se cargan después
+            
+            // También hacer una detección adicional después de 5 segundos
+            setTimeout(() => {
+                const finalVideos = findVideos();
+                if (finalVideos.length > 0) {
+                    handleNewVideos(finalVideos);
+                }
+            }, 5000);
+        }
     }
 
     // Inicializar cuando el DOM esté listo

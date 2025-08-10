@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const currentSpeedElement = document.getElementById('currentSpeed');
     const currentSlowSpeedElement = document.getElementById('currentSlowSpeed');
+    const currentVolumeElement = document.getElementById('currentVolume');
     const resetBtn = document.getElementById('resetBtn');
     const cycleBtn = document.getElementById('cycleBtn');
     const resetSlowBtn = document.getElementById('resetSlowBtn');
@@ -12,8 +13,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Nuevos elementos
     const speedSlider = document.getElementById('speedSlider');
     const slowSpeedSlider = document.getElementById('slowSpeedSlider');
+    const volumeSlider = document.getElementById('volumeSlider');
     const floatingPanelToggle = document.getElementById('floatingPanelToggle');
     const speedLockToggle = document.getElementById('speedLockToggle');
+    
+    // Elementos de control de volumen
+    const decreaseVolumeBtn = document.getElementById('decreaseVolumeBtn');
+    const resetVolumeBtn = document.getElementById('resetVolumeBtn');
+    const increaseVolumeBtn = document.getElementById('increaseVolumeBtn');
 
     // Función para actualizar la visualización de velocidad actual
     function updateSpeedDisplay(speed) {
@@ -25,6 +32,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSlowSpeedDisplay(speed) {
         currentSlowSpeedElement.textContent = `${speed}x`;
         slowSpeedSlider.value = speed;
+    }
+
+    // Función para actualizar la visualización de volumen actual
+    function updateVolumeDisplay(volume) {
+        const volumePercent = Math.round(volume * 100);
+        currentVolumeElement.textContent = `${volumePercent}%`;
+        volumeSlider.value = volumePercent;
     }
 
     // Función para detectar plataforma soportada
@@ -54,6 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (response.slowSpeed) {
                             updateSlowSpeedDisplay(response.slowSpeed);
                         }
+                        if (response.volume) {
+                            updateVolumeDisplay(response.volume);
+                        }
                         if (response.floatingPanelEnabled !== undefined) {
                             floatingPanelToggle.checked = response.floatingPanelEnabled;
                         }
@@ -81,6 +98,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         if (response.slowSpeed) {
                             updateSlowSpeedDisplay(response.slowSpeed);
+                        }
+                        if (response.volume) {
+                            updateVolumeDisplay(response.volume);
                         }
                         if (response.floatingPanelEnabled !== undefined) {
                             floatingPanelToggle.checked = response.floatingPanelEnabled;
@@ -135,6 +155,12 @@ document.addEventListener('DOMContentLoaded', function() {
         sendMessageToContentScript('setSlowSpeed', {speed: speed});
     });
 
+    volumeSlider.addEventListener('input', function() {
+        const volume = parseFloat(this.value) / 100; // Convertir de porcentaje a decimal
+        updateVolumeDisplay(volume);
+        sendMessageToContentScript('setVolume', {volume: volume});
+    });
+
     // Event listeners para toggles
     floatingPanelToggle.addEventListener('change', function() {
         sendMessageToContentScript('toggleFloatingPanel', {enabled: this.checked});
@@ -142,6 +168,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     speedLockToggle.addEventListener('change', function() {
         sendMessageToContentScript('toggleSpeedLock', {enabled: this.checked});
+    });
+
+    // Event listeners para botones de volumen
+    decreaseVolumeBtn.addEventListener('click', function() {
+        sendMessageToContentScript('decreaseVolume');
+    });
+
+    resetVolumeBtn.addEventListener('click', function() {
+        const volume = 1.0; // Reset a 100%
+        updateVolumeDisplay(volume);
+        sendMessageToContentScript('setVolume', {volume: volume});
+    });
+
+    increaseVolumeBtn.addEventListener('click', function() {
+        sendMessageToContentScript('increaseVolume');
     });
 
     // Inicializar popup

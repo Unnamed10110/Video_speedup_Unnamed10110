@@ -136,6 +136,25 @@
             margin-bottom: 20px;
         }
 
+        .volume-display {
+            background: #111111;
+            border: 1px solid #ff6b6b;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .volume-display .current-speed {
+            color: #ff6b6b;
+        }
+
+        .volume-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
         .feature-toggles {
             display: flex;
             gap: 10px;
@@ -249,6 +268,11 @@
             font-family: monospace;
             font-size: 11px;
         }
+        
+        .shortcut-item:last-child .shortcut-key {
+            background: #ff6b6b;
+            color: #ffffff;
+        }
 
         .status {
             text-align: center;
@@ -299,6 +323,25 @@
         <button class="btn" id="cycleSlowBtn">-</button>
     </div>
 
+    <div class="volume-display">
+        <div class="current-speed" id="currentVolume">100%</div>
+        <div class="speed-label">Volume Control (Mouse Wheel)</div>
+        <div class="speed-slider-container">
+                         <input type="range" min="0" max="100" step="2" value="100" class="speed-slider" id="volumeSlider">
+            <div class="slider-labels">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="volume-controls">
+        <button class="btn" id="decreaseVolumeBtn">-</button>
+        <button class="btn" id="resetVolumeBtn">Reset Volume</button>
+        <button class="btn" id="increaseVolumeBtn">+</button>
+    </div>
+
     <div class="feature-toggles">
         <div class="toggle-container">
             <div class="toggle-label">Floating Panel</div>
@@ -316,38 +359,51 @@
         </div>
     </div>
 
-    <div class="keyboard-shortcuts">
-        <h3>⌨️ Keyboard Shortcuts</h3>
-        <div class="shortcut-item">
-            <span>Increase Speed</span>
-            <span class="shortcut-key">+</span>
+            <div class="keyboard-shortcuts">
+            <h3>⌨️ Keyboard & Mouse Shortcuts</h3>
+            <div class="shortcut-item">
+                <span>Increase Speed</span>
+                <span class="shortcut-key">+</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Decrease Slow Speed</span>
+                <span class="shortcut-key">-</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Emergency Stop</span>
+                <span class="shortcut-key">Space</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Toggle Floating Panel</span>
+                <span class="shortcut-key">F</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Increase Volume</span>
+                <span class="shortcut-key">↑</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Decrease Volume</span>
+                <span class="shortcut-key">↓</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Mouse Wheel Volume</span>
+                <span class="shortcut-key">Scroll</span>
+            </div>
         </div>
-        <div class="shortcut-item">
-            <span>Decrease Slow Speed</span>
-            <span class="shortcut-key">-</span>
-        </div>
-        <div class="shortcut-item">
-            <span>Emergency Stop</span>
-            <span class="shortcut-key">Space</span>
-        </div>
-        <div class="shortcut-item">
-            <span>Toggle Floating Panel</span>
-            <span class="shortcut-key">F</span>
-        </div>
-    </div>
 
-    <div class="instructions">
-        <h3>How to use:</h3>
-        <ul>
-            <li>Works on TikTok, YouTube, Vimeo, Twitch, and Instagram</li>
-            <li>Use sliders or buttons to set your desired speeds</li>
-            <li>Hold left click on the right side to speed up</li>
-            <li>Hold left click on the left side to slow down</li>
-            <li>Video changes speed while you're holding</li>
-            <li>Release to return to normal speed</li>
-            <li>Enable Speed Lock to maintain speed across videos</li>
-        </ul>
-    </div>
+            <div class="instructions">
+            <h3>How to use:</h3>
+            <ul>
+                <li>Works on TikTok, YouTube, Vimeo, Twitch, and Instagram</li>
+                <li>Use sliders or buttons to set your desired speeds</li>
+                                 <li>Hold left click on the right side for 500ms to speed up</li>
+                 <li>Hold left click on the left side for 500ms to slow down</li>
+                                 <li>Use mouse wheel while hovering over video to adjust volume</li>
+                                 <li>Video changes speed while you're holding</li>
+                 <li>Release to return to normal speed</li>
+                <li>Enable Speed Lock to maintain speed across videos</li>
+            </ul>
+        </div>
 
     <div class="status" id="status">
         Extension active on TikTok
