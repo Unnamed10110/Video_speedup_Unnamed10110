@@ -3,412 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Speedup</title>
+    <title>Video Speedup Extension</title>
     <style>
         body {
-            width: 320px;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #000000;
-            color: #ffffff;
+            width: 400px;
+            min-height: 600px;
             margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
-
+        
         .header {
             text-align: center;
             margin-bottom: 20px;
         }
-
+        
         .header h1 {
             margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .platform-info {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .platform-info span {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .section {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .section h3 {
+            margin: 0 0 15px 0;
             font-size: 18px;
             font-weight: 600;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
-
-        .speed-display {
-            background: #111111;
-            border: 1px solid #333333;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        .current-speed {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .speed-label {
-            font-size: 12px;
-            color: #888888;
-        }
-
-        .speed-slider-container {
-            margin: 15px 0;
-        }
-
-        .speed-slider {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: #333333;
-            outline: none;
-            -webkit-appearance: none;
-        }
-
-        .speed-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #51cf66;
-            cursor: pointer;
-        }
-
-        .speed-slider::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #51cf66;
-            cursor: pointer;
-            border: none;
-        }
-
-        .slider-labels {
+        
+        .control-group {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            font-size: 10px;
-            color: #888888;
-            margin-top: 5px;
+            margin-bottom: 10px;
         }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+        
+        .control-group:last-child {
+            margin-bottom: 0;
         }
-
+        
+        .control-label {
+            font-weight: 500;
+            color: #f0f0f0;
+        }
+        
+        .control-value {
+            font-weight: 600;
+            color: #fff;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
         .btn {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #333333;
-            border-radius: 6px;
-            background: #111111;
-            color: #ffffff;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-
-        .btn:hover {
-            background: #222222;
-            border-color: #444444;
-        }
-
-        .btn:active {
-            background: #000000;
-        }
-
-        .btn.toggle {
-            background: #51cf66;
-            border-color: #51cf66;
-        }
-
-        .btn.toggle:hover {
-            background: #40c057;
-        }
-
-        .slow-speed-display {
-            background: #111111;
-            border: 1px solid #333333;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        .slow-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .volume-display {
-            background: #111111;
-            border: 1px solid #ff6b6b;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        .volume-display .current-speed {
-            color: #ff6b6b;
-        }
-
-        .volume-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .feature-toggles {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .toggle-container {
-            flex: 1;
-            text-align: center;
-        }
-
-        .toggle-label {
-            font-size: 11px;
-            color: #888888;
-            margin-bottom: 5px;
-        }
-
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #333333;
-            transition: .4s;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
             border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 2px;
-            bottom: 2px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
-
-        input:checked + .toggle-slider {
-            background-color: #51cf66;
+        
+        .btn:active {
+            transform: translateY(0);
         }
-
-        input:checked + .toggle-slider:before {
-            transform: translateX(20px);
+        
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
         }
-
-        .instructions {
-            background: #111111;
-            border: 1px solid #333333;
-            border-radius: 6px;
-            padding: 15px;
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
             font-size: 12px;
-            line-height: 1.4;
         }
-
-        .instructions h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-        }
-
-        .instructions ul {
-            margin: 0;
-            padding-left: 15px;
-        }
-
-        .instructions li {
-            margin-bottom: 5px;
-        }
-
-        .keyboard-shortcuts {
-            background: #111111;
-            border: 1px solid #333333;
-            border-radius: 6px;
+        
+        .shortcuts {
+            background: rgba(255,255,255,0.1);
             padding: 15px;
-            font-size: 12px;
-            line-height: 1.4;
-            margin-bottom: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-
-        .keyboard-shortcuts h3 {
+        
+        .shortcuts h4 {
             margin: 0 0 10px 0;
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
         }
-
+        
         .shortcut-item {
             display: flex;
             justify-content: space-between;
             margin-bottom: 5px;
-        }
-
-        .shortcut-key {
-            background: #333333;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 11px;
+            font-size: 14px;
         }
         
-        .shortcut-item:last-child .shortcut-key {
-            background: #ff6b6b;
-            color: #ffffff;
+        .shortcut-key {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: 600;
         }
-
-        .status {
-            text-align: center;
-            font-size: 11px;
-            color: #888888;
-            margin-top: 15px;
+        
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>⚡ Video Speedup</h1>
+        <h1>🎬 Video Speedup</h1>
     </div>
-
-    <div class="speed-display">
-        <div class="current-speed" id="currentSpeed">1.0x</div>
-        <div class="speed-label">Speed Up (Right Side)</div>
-        <div class="speed-slider-container">
-            <input type="range" min="0.1" max="4.0" step="0.1" value="2.0" class="speed-slider" id="speedSlider">
-            <div class="slider-labels">
-                <span>0.1x</span>
-                <span>2.0x</span>
-                <span>4.0x</span>
-            </div>
+    
+    <div class="platform-info">
+        Platform: <span id="platform-info">Detecting...</span>
+    </div>
+    
+    <!-- X.com / Twitter Controls -->
+    <div id="x-controls" class="section hidden">
+        <h3>🐦 X.com / Twitter Controls</h3>
+        
+        <div class="control-group">
+            <span class="control-label">Click-and-Hold Speed:</span>
+            <span class="control-value" id="current-speed">2.0x</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="speed-down">-</button>
+            <button class="btn btn-small" id="speed-reset">Reset</button>
+            <button class="btn btn-small" id="speed-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <span class="control-label">Slow Speed:</span>
+            <span class="control-value" id="current-slow-speed">0.5x</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="slow-speed-down">-</button>
+            <button class="btn btn-small" id="slow-speed-reset">Reset</button>
+            <button class="btn btn-small" id="slow-speed-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <span class="control-label">Volume:</span>
+            <span class="control-value" id="current-volume">100%</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="volume-down">-</button>
+            <button class="btn btn-small" id="volume-reset">Reset</button>
+            <button class="btn btn-small" id="volume-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="toggle-speed">Enable Speed</button>
+            <button class="btn" id="toggle-slow-speed">Enable Slow Speed</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="toggle-volume">Enable Volume Control</button>
         </div>
     </div>
-
-    <div class="controls">
-        <button class="btn" id="resetBtn">Reset Speed</button>
-        <button class="btn" id="cycleBtn">+</button>
-    </div>
-
-    <div class="slow-speed-display">
-        <div class="current-speed" id="currentSlowSpeed">1.0x</div>
-        <div class="speed-label">Slow Down (Left Side)</div>
-        <div class="speed-slider-container">
-            <input type="range" min="0.1" max="4.0" step="0.1" value="2.0" class="speed-slider" id="slowSpeedSlider">
-            <div class="slider-labels">
-                <span>0.1x</span>
-                <span>2.0x</span>
-                <span>4.0x</span>
-            </div>
+    
+    <!-- Universal Controls -->
+    <div id="universal-controls" class="section hidden">
+        <h3>🌐 Universal Video Controls</h3>
+        
+        <div class="control-group">
+            <span class="control-label">Click-and-Hold Speed:</span>
+            <span class="control-value" id="universal-current-speed">2.0x</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="universal-speed-down">-</button>
+            <button class="btn btn-small" id="universal-speed-reset">Reset</button>
+            <button class="btn btn-small" id="universal-speed-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="toggle-universal-speed">Enable Universal Speed</button>
         </div>
     </div>
-
-    <div class="slow-controls">
-        <button class="btn" id="resetSlowBtn">Reset Slow</button>
-        <button class="btn" id="cycleSlowBtn">-</button>
-    </div>
-
-    <div class="volume-display">
-        <div class="current-speed" id="currentVolume">100%</div>
-        <div class="speed-label">Volume Control (Mouse Wheel)</div>
-        <div class="speed-slider-container">
-                         <input type="range" min="0" max="100" step="2" value="100" class="speed-slider" id="volumeSlider">
-            <div class="slider-labels">
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-            </div>
+    
+    <!-- Standard Controls (TikTok, YouTube, etc.) -->
+    <div id="standard-controls" class="section hidden">
+        <h3>🎬 Standard Video Controls</h3>
+        
+        <div class="control-group">
+            <span class="control-label">Speed:</span>
+            <span class="control-value" id="current-speed">2.0x</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="speed-down">-</button>
+            <button class="btn btn-small" id="speed-reset">Reset</button>
+            <button class="btn btn-small" id="speed-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <span class="control-label">Slow Speed:</span>
+            <span class="control-value" id="current-slow-speed">0.5x</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="slow-speed-down">-</button>
+            <button class="btn btn-small" id="slow-speed-reset">Reset</button>
+            <button class="btn btn-small" id="slow-speed-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <span class="control-label">Volume:</span>
+            <span class="control-value" id="current-volume">100%</span>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-small" id="volume-down">-</button>
+            <button class="btn btn-small" id="volume-reset">Reset</button>
+            <button class="btn btn-small" id="volume-up">+</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="toggle-speed">Enable Speed</button>
+            <button class="btn" id="toggle-slow-speed">Enable Slow Speed</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="toggle-volume">Enable Volume Control</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="floating-panel-toggle">Enable Floating Panel</button>
+        </div>
+        
+        <div class="control-group">
+            <button class="btn" id="speed-lock-toggle">Enable Speed Lock</button>
         </div>
     </div>
-
-    <div class="volume-controls">
-        <button class="btn" id="decreaseVolumeBtn">-</button>
-        <button class="btn" id="resetVolumeBtn">Reset Volume</button>
-        <button class="btn" id="increaseVolumeBtn">+</button>
+    
+    <div class="shortcuts">
+        <h4>⌨️ Keyboard Shortcuts</h4>
+        
+        <div class="shortcut-item">
+            <span>Speed Up:</span>
+            <span class="shortcut-key">Alt+2</span>
+        </div>
+        
+        <div class="shortcut-item">
+            <span>Speed Down:</span>
+            <span class="shortcut-key">Alt+1</span>
+        </div>
+        
+        <div class="shortcut-item">
+            <span>Reset Speed:</span>
+            <span class="shortcut-key">Ctrl+Shift+R</span>
+        </div>
+        
+        <div class="shortcut-item">
+            <span>Toggle Speed:</span>
+            <span class="shortcut-key">Ctrl+Shift+S</span>
+        </div>
     </div>
-
-    <div class="feature-toggles">
-        <div class="toggle-container">
-            <div class="toggle-label">Floating Panel</div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="floatingPanelToggle">
-                <span class="toggle-slider"></span>
-            </label>
+    
+    <div class="shortcuts">
+        <h4>🖱️ Mouse Controls</h4>
+        
+        <div class="shortcut-item">
+            <span>Speed Control:</span>
+            <span>Hold left click on video for 500ms</span>
         </div>
-        <div class="toggle-container">
-            <div class="toggle-label">Speed Lock</div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="speedLockToggle">
-                <span class="toggle-slider"></span>
-            </label>
+        
+        <div class="shortcut-item">
+            <span>Volume Control:</span>
+            <span>Mouse wheel over video</span>
         </div>
     </div>
-
-            <div class="keyboard-shortcuts">
-            <h3>⌨️ Keyboard & Mouse Shortcuts</h3>
-            <div class="shortcut-item">
-                <span>Increase Speed</span>
-                <span class="shortcut-key">+</span>
-            </div>
-            <div class="shortcut-item">
-                <span>Decrease Slow Speed</span>
-                <span class="shortcut-key">-</span>
-            </div>
-            <div class="shortcut-item">
-                <span>Emergency Stop</span>
-                <span class="shortcut-key">Space</span>
-            </div>
-            <div class="shortcut-item">
-                <span>Toggle Floating Panel</span>
-                <span class="shortcut-key">F</span>
-            </div>
-            <div class="shortcut-item">
-                <span>Increase Volume</span>
-                <span class="shortcut-key">↑</span>
-            </div>
-            <div class="shortcut-item">
-                <span>Decrease Volume</span>
-                <span class="shortcut-key">↓</span>
-            </div>
-            <div class="shortcut-item">
-                <span>Mouse Wheel Volume</span>
-                <span class="shortcut-key">Scroll</span>
-            </div>
-        </div>
-
-            <div class="instructions">
-            <h3>How to use:</h3>
-            <ul>
-                <li>Works on TikTok, YouTube, Vimeo, Twitch, and Instagram</li>
-                <li>Use sliders or buttons to set your desired speeds</li>
-                                 <li>Hold left click on the right side for 500ms to speed up</li>
-                 <li>Hold left click on the left side for 500ms to slow down</li>
-                                 <li>Use mouse wheel while hovering over video to adjust volume</li>
-                                 <li>Video changes speed while you're holding</li>
-                 <li>Release to return to normal speed</li>
-                <li>Enable Speed Lock to maintain speed across videos</li>
-            </ul>
-        </div>
-
-    <div class="status" id="status">
-        Extension active on TikTok
-    </div>
-
+    
     <script src="popup.js"></script>
 </body>
 </html> 

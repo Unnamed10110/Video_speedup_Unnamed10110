@@ -1,36 +1,81 @@
 {
   "manifest_version": 3,
-  "name": "Video Speedup",
+  "name": "Video Speedup Extension",
   "version": "1.0",
-  "description": "Speed up videos on TikTok, YouTube, Vimeo, Twitch, and Instagram by clicking on different sides of the video player",
+  "description": "Control video playback speed and volume on multiple platforms",
+  
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage",
+    "tabs"
   ],
+  
   "host_permissions": [
-    "https://www.tiktok.com/*",
-    "https://www.youtube.com/*",
-    "https://vimeo.com/*",
-    "https://www.twitch.tv/*",
-    "https://www.instagram.com/*"
+    "*://*.tiktok.com/*",
+    "*://*.youtube.com/*",
+    "*://*.vimeo.com/*",
+    "*://*.twitch.tv/*",
+    "*://*.instagram.com/*",
+    "*://*.twitter.com/*",
+    "*://*.x.com/*",
+    "<all_urls>"
   ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
   "content_scripts": [
     {
       "matches": [
-        "https://www.tiktok.com/*",
-        "https://www.youtube.com/*",
-        "https://vimeo.com/*",
-        "https://www.twitch.tv/*",
-        "https://www.instagram.com/*"
+        "*://*.tiktok.com/*",
+        "*://*.youtube.com/*",
+        "*://*.vimeo.com/*",
+        "*://*.twitch.tv/*",
+        "*://*.instagram.com/*"
+      ],
+      "exclude_matches": [
+        "*://*.twitter.com/*",
+        "*://*.x.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end"
     }
   ],
+  
+  "commands": {
+    "speed-up": {
+      "suggested_key": {
+        "default": "Alt+2"
+      },
+      "description": "Increase video speed (X.com/Twitter) or set speed value (other platforms)"
+    },
+    "speed-down": {
+      "suggested_key": {
+        "default": "Alt+1"
+      },
+      "description": "Decrease video speed (X.com/Twitter) or set speed value (other platforms)"
+    },
+    "reset-speed": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R"
+      },
+      "description": "Reset video speed to normal (all platforms)"
+    },
+    "toggle-speed": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S"
+      },
+      "description": "Toggle speed mode on/off (all platforms)"
+    }
+  },
+  
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Video Speedup"
+    "default_title": "Video Speedup Extension"
   },
+  
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
