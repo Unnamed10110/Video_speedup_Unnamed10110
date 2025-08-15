@@ -15,6 +15,7 @@
     let currentVolume = 1.0; // Por defecto 100% de volumen
     let originalVolumes = new Map(); // Guardar volúmenes originales de los videos
     let isVolumeControlActive = false; // Si el control de volumen está activo
+    let volumeControlStartVolume = 1.0; // Volumen inicial cuando se empieza a controlar
     
     // Secuencia de velocidad para teclas + y -
     const speedSequence = [0.1, 0.25, 0.5, 0.8, 1.0, 1.5, 1.8, 2.0, 2.1, 2.5, 3.0, 3.5, 4.0];
@@ -59,7 +60,14 @@
                 ];
                 for (const selector of tiktokSelectors) {
                     videos = document.querySelectorAll(selector);
-                    if (videos.length > 0) break;
+                    if (videos.length > 0) {
+                        // Filtrar para solo videos principales (no thumbnails)
+                        videos = Array.from(videos).filter(video => {
+                            const rect = video.getBoundingClientRect();
+                            return rect.width > 200 && rect.height > 150;
+                        });
+                        if (videos.length > 0) break;
+                    }
                 }
                 break;
                 
@@ -79,7 +87,7 @@
                         // Filtrar para devolver solo el reproductor principal
                         const mainVideo = Array.from(videos).find(video => {
                             const rect = video.getBoundingClientRect();
-                            return rect.width > 200 && rect.height > 100;
+                            return rect.width > 300 && rect.height > 200;
                         });
                         if (mainVideo) return [mainVideo];
                         break;
@@ -90,7 +98,10 @@
                 if (playerContainer) {
                     const videosInPlayer = playerContainer.querySelectorAll('video');
                     if (videosInPlayer.length > 0) {
-                        videos = Array.from(videosInPlayer);
+                        videos = Array.from(videosInPlayer).filter(video => {
+                            const rect = video.getBoundingClientRect();
+                            return rect.width > 300 && rect.height > 200;
+                        });
                     }
                 }
                 break;
@@ -104,7 +115,14 @@
                 ];
                 for (const selector of vimeoSelectors) {
                     videos = document.querySelectorAll(selector);
-                    if (videos.length > 0) break;
+                    if (videos.length > 0) {
+                        // Filtrar para solo videos principales
+                        videos = Array.from(videos).filter(video => {
+                            const rect = video.getBoundingClientRect();
+                            return rect.width > 300 && rect.height > 200;
+                        });
+                        if (videos.length > 0) break;
+                    }
                 }
                 break;
                 
@@ -131,7 +149,7 @@
                         const mainVideos = Array.from(videos).filter(video => {
                             const rect = video.getBoundingClientRect();
                             // Only consider videos that are reasonably sized (likely main player)
-                            return rect.width > 300 && rect.height > 200;
+                            return rect.width > 400 && rect.height > 250;
                         });
                         if (mainVideos.length > 0) {
                             videos = mainVideos;
@@ -157,7 +175,7 @@
                             const videoInContainer = container.querySelector('video');
                             if (videoInContainer) {
                                 const rect = videoInContainer.getBoundingClientRect();
-                                if (rect.width > 300 && rect.height > 200) {
+                                if (rect.width > 400 && rect.height > 250) {
                                     videos = [videoInContainer];
                                     break;
                                 }
@@ -191,7 +209,14 @@
                 ];
                 for (const selector of instagramSelectors) {
                     videos = document.querySelectorAll(selector);
-                    if (videos.length > 0) break;
+                    if (videos.length > 0) {
+                        // Filtrar para solo videos principales
+                        videos = Array.from(videos).filter(video => {
+                            const rect = video.getBoundingClientRect();
+                            return rect.width > 200 && rect.height > 150;
+                        });
+                        if (videos.length > 0) break;
+                    }
                 }
                 break;
         }
@@ -237,6 +262,12 @@
                 if (speedLockEnabled && (isSpeedActive || isSlowActive)) {
                     const targetSpeed = isSpeedActive ? currentSpeed : currentSlowSpeed;
                     setVideoSpeed(video, targetSpeed);
+                }
+                
+                // Sincronizar volumen con el nuevo video
+                if (video.volume !== undefined) {
+                    currentVolume = video.volume;
+                    console.log(`🔊 Volume synced with new video: ${Math.round(currentVolume * 100)}%`);
                 }
             }
         });
@@ -579,10 +610,13 @@
                 if (!originalVolumes.has(video)) {
                     originalVolumes.set(video, video.volume);
                 }
+                // Usar el volumen actual del video como punto de partida
+                currentVolume = video.volume;
+                volumeControlStartVolume = video.volume;
                 setVideoVolume(video, currentVolume);
             });
             
-            console.log(`🔊 Volume control activated: ${currentVolume}`);
+            console.log(`🔊 Volume control activated: ${Math.round(currentVolume * 100)}%`);
         }
     }
 
@@ -772,11 +806,28 @@
         }
     }
 
+    // Función para forzar sincronización de volumen
+    function forceVolumeSync() {
+        const videos = findVideos();
+        if (videos.length > 0) {
+            const video = videos[0];
+            if (video.volume !== undefined && video.volume !== null) {
+                const oldVolume = currentVolume;
+                currentVolume = video.volume;
+                volumeControlStartVolume = video.volume;
+                console.log(`🔊 Force volume sync: ${Math.round(oldVolume * 100)}% → ${Math.round(currentVolume * 100)}%`);
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Función para manejar eventos del mouse
     function handleMouseEvents() {
         let isMouseDown = false;
         let mouseDownTimeout = null;
         let mouseDownAction = null;
+        let lastMousePosition = { x: 0, y: 0 };
 
         document.addEventListener('mousedown', (event) => {
             const videos = findVideos();
@@ -789,11 +840,43 @@
 
             // Verificar si el clic está dentro de los límites del video
             if (clickX >= 0 && clickX <= rect.width && clickY >= 0 && clickY <= rect.height) {
+                // Verificar que sea un video principal (no thumbnail)
+                const platform = getPlatform();
+                let isMainPlayer = false;
+                
+                if (platform === 'youtube') {
+                    isMainPlayer = rect.width > 300 && rect.height > 200;
+                } else if (platform === 'twitch') {
+                    isMainPlayer = rect.width > 400 && rect.height > 250;
+                } else if (platform === 'vimeo') {
+                    isMainPlayer = rect.width > 300 && rect.height > 200;
+                } else if (platform === 'instagram') {
+                    isMainPlayer = rect.width > 200 && rect.height > 150;
+                } else if (platform === 'tiktok') {
+                    isMainPlayer = rect.width > 200 && rect.height > 150;
+                } else {
+                    isMainPlayer = rect.width > 250 && rect.height > 180;
+                }
+                
+                console.log(`🎯 Mouse down on video: ${platform}, size: ${rect.width}x${rect.height}, isMainPlayer: ${isMainPlayer}`);
+                
+                if (!isMainPlayer) {
+                    // Si no es el reproductor principal, permitir comportamiento normal
+                    console.log('🎯 Not main player, allowing normal behavior');
+                    return;
+                }
+                
+                // Forzar sincronización de volumen cuando el usuario interactúa
+                forceVolumeSync();
+                
                 isMouseDown = true;
+                lastMousePosition = { x: event.clientX, y: event.clientY };
                 
                 // Determinar qué área fue clickeada
                 const rightSide = clickX > rect.width * 0.7;
                 const leftSide = clickX < rect.width * 0.3;
+                
+                console.log(`🎯 Click position: ${clickX}/${rect.width} (${Math.round(clickX/rect.width*100)}%), rightSide: ${rightSide}, leftSide: ${leftSide}`);
                 
                 if (rightSide) {
                     mouseDownAction = 'speed';
@@ -801,6 +884,7 @@
                     showSpeedIndicator('Hold 500ms...', 'Preparing');
                     mouseDownTimeout = setTimeout(() => {
                         if (isMouseDown) {
+                            console.log('🎯 Activating speed control');
                             activateSpeed();
                         }
                     }, 500);
@@ -810,13 +894,43 @@
                     showSpeedIndicator('Hold 500ms...', 'Preparing');
                     mouseDownTimeout = setTimeout(() => {
                         if (isMouseDown) {
+                            console.log('🎯 Activating slow speed control');
                             activateSlowSpeed();
                         }
                     }, 500);
                 }
                 
-                event.preventDefault();
-                event.stopPropagation();
+                // Solo prevenir comportamiento por defecto si estamos en un área activa del video
+                if (rightSide || leftSide) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            if (isMouseDown) {
+                // Verificar si el mouse se movió significativamente (para detectar arrastre)
+                const deltaX = Math.abs(event.clientX - lastMousePosition.x);
+                const deltaY = Math.abs(event.clientY - lastMousePosition.y);
+                
+                // Si el mouse se movió más de 10px, probablemente es un arrastre, no un clic
+                if (deltaX > 10 || deltaY > 10) {
+                    isMouseDown = false;
+                    if (mouseDownTimeout) {
+                        clearTimeout(mouseDownTimeout);
+                        mouseDownTimeout = null;
+                    }
+                    
+                    // Limpiar indicador de "mantener presionado"
+                    const indicator = document.getElementById('speedIndicator');
+                    if (indicator && indicator.textContent.includes('Hold 500ms...')) {
+                        indicator.remove();
+                    }
+                    
+                    // Desactivar velocidad
+                    deactivateSpeed();
+                }
             }
         });
 
@@ -864,6 +978,25 @@
         // Agregar event listeners específicos de video aquí si es necesario
         // Por ahora, solo lo marcamos como procesado
         processedVideos.add(video);
+        
+        // Verificar si el volumen del video está disponible y sincronizar
+        if (video.volume !== undefined && video.volume !== null) {
+            currentVolume = video.volume;
+            console.log(`🔊 Video volume detected during setup: ${Math.round(currentVolume * 100)}%`);
+        } else {
+            // Si el volumen no está disponible, configurar un listener para cuando esté disponible
+            const checkVolume = () => {
+                if (video.volume !== undefined && video.volume !== null) {
+                    currentVolume = video.volume;
+                    console.log(`🔊 Video volume became available: ${Math.round(currentVolume * 100)}%`);
+                    video.removeEventListener('loadedmetadata', checkVolume);
+                    video.removeEventListener('canplay', checkVolume);
+                }
+            };
+            
+            video.addEventListener('loadedmetadata', checkVolume);
+            video.addEventListener('canplay', checkVolume);
+        }
     }
 
     // Función para resetear velocidad
@@ -878,18 +1011,85 @@
 
     // Función para resetear volumen
     function resetVolume() {
-        currentVolume = 1.0;
-        if (isVolumeControlActive) {
-            const videos = findVideos();
-            videos.forEach(video => setVideoVolume(video, currentVolume));
+        const videos = findVideos();
+        if (videos.length > 0) {
+            // Restaurar al volumen original del video
+            videos.forEach(video => {
+                const originalVolume = originalVolumes.get(video) || 1.0;
+                currentVolume = originalVolume;
+                setVideoVolume(video, currentVolume);
+            });
+        } else {
+            // Si no hay videos, resetear a 100%
+            currentVolume = 1.0;
         }
-        console.log('🔊 Volumen reseteado a 100%');
+        console.log('🔊 Volumen reseteado a', Math.round(currentVolume * 100) + '%');
+    }
+
+    // Función para sincronizar volumen con el video actual
+    function syncVolumeWithVideo() {
+        const videos = findVideos();
+        if (videos.length > 0) {
+            const video = videos[0];
+            if (video.volume !== undefined && video.volume !== null) {
+                currentVolume = video.volume;
+                console.log(`🔊 Volume synced with video: ${Math.round(currentVolume * 100)}%`);
+                return true;
+            } else {
+                console.log('🔊 Video volume not yet available, will retry later');
+                return false;
+            }
+        }
+        return false;
+    }
+    
+    // Función para sincronizar volumen con retry
+    function syncVolumeWithRetry(maxAttempts = 10, delay = 500) {
+        let attempts = 0;
+        
+        function attemptSync() {
+            if (attempts >= maxAttempts) {
+                console.log('🔊 Failed to sync volume after maximum attempts, using default 100%');
+                currentVolume = 1.0;
+                return;
+            }
+            
+            if (syncVolumeWithVideo()) {
+                console.log('🔊 Volume sync successful');
+                return;
+            }
+            
+            attempts++;
+            console.log(`🔊 Volume sync attempt ${attempts}/${maxAttempts} failed, retrying in ${delay}ms...`);
+            setTimeout(attemptSync, delay);
+        }
+        
+        attemptSync();
+    }
+
+    // Función para verificar volumen periódicamente
+    function startVolumeMonitoring() {
+        // Verificar volumen cada 2 segundos para videos que se cargan dinámicamente
+        setInterval(() => {
+            const videos = findVideos();
+            if (videos.length > 0) {
+                const video = videos[0];
+                if (video.volume !== undefined && video.volume !== null && 
+                    Math.abs(video.volume - currentVolume) > 0.01) {
+                    // Solo actualizar si hay una diferencia significativa
+                    currentVolume = video.volume;
+                    console.log(`🔊 Volume updated from periodic check: ${Math.round(currentVolume * 100)}%`);
+                }
+            }
+        }, 2000);
     }
 
     // Función para manejar mensajes del popup
     function handleMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getSpeed':
+                // Sincronizar volumen con el video actual antes de responder
+                syncVolumeWithVideo();
                 sendResponse({
                     speed: currentSpeed,
                     slowSpeed: currentSlowSpeed,
@@ -985,6 +1185,9 @@
         // Empezar detección perezosa de videos
         startLazyVideoDetection();
         
+        // Empezar monitoreo de volumen
+        startVolumeMonitoring();
+        
         // Configurar atajos de teclado
         document.addEventListener('keydown', (event) => {
             // Verificar que no estemos en un campo de entrada
@@ -1040,6 +1243,13 @@
                 return;
             }
             
+            // Verificar si estamos sobre un área que debería permitir scroll normal
+            if (isOverScrollableArea(event.clientX, event.clientY)) {
+                // Si estamos sobre un área scrollable (feed, comentarios, etc.), permitir scroll normal
+                console.log('🎵 Wheel over scrollable area, allowing normal scroll');
+                return;
+            }
+            
             // Verificar si el mouse está sobre un video
             const videos = findVideos();
             let isOverVideo = false;
@@ -1056,9 +1266,67 @@
             }
             
             // Solo activar si el mouse está sobre un video
-            if (!isOverVideo) return;
+            if (!isOverVideo) {
+                console.log('🎵 Wheel not over video, allowing normal scroll');
+                return;
+            }
             
-            // Prevenir el scroll normal de la página
+            // Verificar que el video sea lo suficientemente grande para ser el reproductor principal
+            // (no thumbnails o videos pequeños)
+            if (targetVideo) {
+                const rect = targetVideo.getBoundingClientRect();
+                const platform = getPlatform();
+                
+                // Criterios más estrictos para considerar un video como reproductor principal
+                let isMainPlayer = false;
+                
+                if (platform === 'youtube') {
+                    // Para YouTube, solo considerar videos grandes (reproductor principal)
+                    isMainPlayer = rect.width > 300 && rect.height > 200;
+                } else if (platform === 'twitch') {
+                    // Para Twitch, solo considerar videos grandes (reproductor principal)
+                    isMainPlayer = rect.width > 400 && rect.height > 250;
+                } else if (platform === 'vimeo') {
+                    // Para Vimeo, solo considerar videos grandes
+                    isMainPlayer = rect.width > 300 && rect.height > 200;
+                } else if (platform === 'instagram') {
+                    // Para Instagram, ser más permisivo pero aún selectivo
+                    isMainPlayer = rect.width > 200 && rect.height > 150;
+                } else {
+                    // Para otras plataformas, usar criterio general
+                    isMainPlayer = rect.width > 250 && rect.height > 180;
+                }
+                
+                console.log(`🎵 Wheel over video: ${platform}, size: ${rect.width}x${rect.height}, isMainPlayer: ${isMainPlayer}`);
+                
+                if (!isMainPlayer) {
+                    // Si no es el reproductor principal, permitir scroll normal
+                    console.log('🎵 Not main player, allowing normal scroll');
+                    return;
+                }
+                
+                // Inicializar control de volumen desde el volumen actual del video
+                if (!isVolumeControlActive) {
+                    isVolumeControlActive = true;
+                    // Siempre obtener el volumen actual del video, no usar el valor guardado
+                    const videoVolume = targetVideo.volume;
+                    if (videoVolume !== undefined && videoVolume !== null) {
+                        currentVolume = videoVolume;
+                        volumeControlStartVolume = videoVolume;
+                        console.log(`🎵 Volume control initialized from video: ${Math.round(currentVolume * 100)}%`);
+                    } else {
+                        // Si el volumen no está disponible, usar el valor por defecto
+                        currentVolume = 1.0;
+                        volumeControlStartVolume = 1.0;
+                        console.log('🎵 Volume control initialized with default: 100%');
+                    }
+                }
+            }
+            
+            console.log('🎵 Intercepting wheel for volume control');
+            
+            // Solo prevenir el scroll normal si estamos definitivamente sobre el reproductor principal
+            // y el usuario está activamente intentando controlar el volumen
             event.preventDefault();
             event.stopPropagation();
             
@@ -1084,6 +1352,117 @@
             }
         }, { passive: false });
         
+        // Función para verificar si estamos sobre un área que debería permitir scroll normal
+        function isOverScrollableArea(x, y) {
+            const platform = getPlatform();
+            const elements = document.elementsFromPoint(x, y);
+            
+            // Primero verificar si estamos sobre un video principal
+            const videos = findVideos();
+            for (const video of videos) {
+                const rect = video.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    // Si estamos sobre un video, verificar que sea el principal
+                    const platform = getPlatform();
+                    let isMainPlayer = false;
+                    
+                    if (platform === 'youtube') {
+                        isMainPlayer = rect.width > 300 && rect.height > 200;
+                    } else if (platform === 'twitch') {
+                        isMainPlayer = rect.width > 400 && rect.height > 250;
+                    } else if (platform === 'vimeo') {
+                        isMainPlayer = rect.width > 300 && rect.height > 200;
+                    } else if (platform === 'instagram') {
+                        isMainPlayer = rect.width > 200 && rect.height > 150;
+                    } else if (platform === 'tiktok') {
+                        isMainPlayer = rect.width > 200 && rect.height > 150;
+                    } else {
+                        isMainPlayer = rect.width > 250 && rect.height > 180;
+                    }
+                    
+                    // Si es el reproductor principal, NO es un área scrollable
+                    if (isMainPlayer) {
+                        console.log('🎵 Over main video player, NOT a scrollable area');
+                        return false;
+                    }
+                }
+            }
+            
+            for (const element of elements) {
+                const tagName = element.tagName.toLowerCase();
+                const className = element.className || '';
+                const id = element.id || '';
+                
+                // Verificar si estamos sobre elementos que deberían permitir scroll normal
+                if (platform === 'youtube') {
+                    // En YouTube, permitir scroll en feeds, comentarios, sidebar, etc.
+                    if (className.includes('feed') || className.includes('comment') || 
+                        className.includes('sidebar') || className.includes('related') ||
+                        className.includes('playlist') || className.includes('thumbnail') ||
+                        id.includes('feed') || id.includes('comment') || 
+                        id.includes('sidebar') || id.includes('related') ||
+                        id.includes('playlist') || id.includes('thumbnail')) {
+                        console.log(`🎵 YouTube scrollable area detected: ${className} ${id}`);
+                        return true;
+                    }
+                } else if (platform === 'tiktok') {
+                    // En TikTok, permitir scroll en feeds, comentarios, etc.
+                    if (className.includes('feed') || className.includes('comment') ||
+                        className.includes('sidebar') || className.includes('related') ||
+                        className.includes('thumbnail') || className.includes('suggested') ||
+                        id.includes('feed') || id.includes('comment') ||
+                        id.includes('sidebar') || id.includes('related') ||
+                        id.includes('thumbnail') || id.includes('suggested')) {
+                        console.log(`🎵 TikTok scrollable area detected: ${className} ${id}`);
+                        return true;
+                    }
+                } else if (platform === 'twitch') {
+                    // En Twitch, permitir scroll en chat, sidebar, etc.
+                    if (className.includes('chat') || className.includes('sidebar') ||
+                        className.includes('related') || className.includes('thumbnail') ||
+                        className.includes('recommendation') || className.includes('category') ||
+                        id.includes('chat') || id.includes('sidebar') ||
+                        id.includes('related') || id.includes('thumbnail') ||
+                        id.includes('recommendation') || id.includes('category')) {
+                        console.log(`🎵 Twitch scrollable area detected: ${className} ${id}`);
+                        return true;
+                    }
+                } else if (platform === 'instagram') {
+                    // En Instagram, permitir scroll en feeds, stories, etc.
+                    if (className.includes('feed') || className.includes('story') ||
+                        className.includes('sidebar') || className.includes('related') ||
+                        className.includes('thumbnail') || className.includes('suggested') ||
+                        id.includes('feed') || id.includes('story') ||
+                        id.includes('sidebar') || id.includes('related') ||
+                        id.includes('thumbnail') || id.includes('suggested')) {
+                        console.log(`🎵 Instagram scrollable area detected: ${className} ${id}`);
+                        return true;
+                    }
+                }
+                
+                // Verificar elementos comunes que deberían permitir scroll
+                if (tagName === 'div' && (className.includes('feed') || className.includes('list') ||
+                    className.includes('grid') || className.includes('container') ||
+                    className.includes('wrapper') || className.includes('content'))) {
+                    console.log(`🎵 Common scrollable area detected: ${tagName} ${className}`);
+                    return true;
+                }
+                
+                // Verificar si el elemento tiene scroll
+                const computedStyle = window.getComputedStyle(element);
+                const overflow = computedStyle.overflow + computedStyle.overflowX + computedStyle.overflowY;
+                if (overflow.includes('scroll') || overflow.includes('auto')) {
+                    if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+                        console.log(`🎵 Scrollable element detected: ${tagName} ${className} overflow: ${overflow}`);
+                        return true;
+                    }
+                }
+            }
+            
+            console.log('🎵 No scrollable area detected, allowing video control');
+            return false;
+        }
+        
         // Configurar MutationObserver para videos nuevos (carga perezosa)
         const observer = new MutationObserver((mutations) => {
             let shouldCheck = false;
@@ -1107,6 +1486,9 @@
         const initialVideos = findVideos();
         handleNewVideos(initialVideos);
         
+        // Sincronizar volumen con el video inicial usando retry
+        syncVolumeWithRetry();
+        
         // Inicialización específica para Twitch y TikTok
         if (platform === 'twitch' || platform === 'tiktok') {
             // Para Twitch y TikTok, hacer una detección adicional después de un retraso
@@ -1115,6 +1497,7 @@
                 const delayedVideos = findVideos();
                 if (delayedVideos.length > 0) {
                     handleNewVideos(delayedVideos);
+                    syncVolumeWithRetry();
                 }
             }, 2000); // Esperar 2 segundos para videos que se cargan después
             
@@ -1123,6 +1506,7 @@
                 const finalVideos = findVideos();
                 if (finalVideos.length > 0) {
                     handleNewVideos(finalVideos);
+                    syncVolumeWithRetry();
                 }
             }, 5000);
         }
