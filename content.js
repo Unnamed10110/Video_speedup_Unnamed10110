@@ -219,9 +219,9 @@
             clearInterval(videoDetectionInterval);
         }
         
-        // Usar detección más agresiva para Twitch
+        // Usar detección más agresiva para Twitch y TikTok
         const platform = getPlatform();
-        const detectionInterval = platform === 'twitch' ? 500 : 1000; // 500ms para Twitch, 1000ms para otros
+        const detectionInterval = (platform === 'twitch' || platform === 'tiktok') ? 500 : 1000; // 500ms para Twitch y TikTok, 1000ms para otros
         
         videoDetectionInterval = setInterval(debouncedVideoDetection, detectionInterval);
     }
@@ -252,16 +252,16 @@
             // Aplicar velocidad inmediatamente
             video.playbackRate = speed;
             
-            // Para YouTube y Twitch, aplicar velocidad múltiples veces con pequeños retrasos
+            // Para YouTube, Twitch y TikTok, aplicar velocidad múltiples veces con pequeños retrasos
             const platform = getPlatform();
-            if (platform === 'youtube' || platform === 'twitch') {
+            if (platform === 'youtube' || platform === 'twitch' || platform === 'tiktok') {
                 // Aplicar velocidad múltiples veces con pequeños retrasos para mayor persistencia
                 setTimeout(() => { video.playbackRate = speed; }, 10);
                 setTimeout(() => { video.playbackRate = speed; }, 50);
                 setTimeout(() => { video.playbackRate = speed; }, 100);
                 setTimeout(() => { video.playbackRate = speed; }, 200);
-                // Para Twitch, aplicar adicionalmente con más retrasos
-                if (platform === 'twitch') {
+                // Para Twitch y TikTok, aplicar adicionalmente con más retrasos
+                if (platform === 'twitch' || platform === 'tiktok') {
                     setTimeout(() => { video.playbackRate = speed; }, 300);
                     setTimeout(() => { video.playbackRate = speed; }, 500);
                     setTimeout(() => { video.playbackRate = speed; }, 1000);
@@ -370,14 +370,14 @@
                 // Siempre restaurar a velocidad normal (1.0x) cuando se suelta
                 video.playbackRate = 1.0;
                 
-                // Para YouTube y Twitch, aplicar múltiples veces para asegurar que se mantenga
+                // Para YouTube, Twitch y TikTok, aplicar múltiples veces para asegurar que se mantenga
                 const platform = getPlatform();
-                if (platform === 'youtube' || platform === 'twitch') {
+                if (platform === 'youtube' || platform === 'twitch' || platform === 'tiktok') {
                     setTimeout(() => { video.playbackRate = 1.0; }, 10);
                     setTimeout(() => { video.playbackRate = 1.0; }, 50);
                     setTimeout(() => { video.playbackRate = 1.0; }, 100);
                     setTimeout(() => { video.playbackRate = 1.0; }, 200);
-                    if (platform === 'twitch') {
+                    if (platform === 'twitch' || platform === 'tiktok') {
                         setTimeout(() => { video.playbackRate = 1.0; }, 300);
                         setTimeout(() => { video.playbackRate = 1.0; }, 500);
                     }
@@ -970,8 +970,8 @@
     // Función para inicializar la extensión
     function initialize() {
         const platform = getPlatform();
-        if (platform === 'twitch') {
-            console.log('🎮 Video Speedup Extension: Twitch mode activated - Enhanced video detection enabled');
+        if (platform === 'twitch' || platform === 'tiktok') {
+            console.log(`🎮 Video Speedup Extension: ${platform === 'twitch' ? 'Twitch' : 'TikTok'} mode activated - Enhanced video detection enabled`);
         } else {
             // console.log('¡Extensión de Velocidad de Videos cargada! Mantén clic izquierdo en el lado derecho para acelerar, lado izquierdo para desacelerar.');
         }
@@ -1107,10 +1107,10 @@
         const initialVideos = findVideos();
         handleNewVideos(initialVideos);
         
-        // Inicialización específica para Twitch
-        if (getPlatform() === 'twitch') {
-            // Para Twitch, hacer una detección adicional después de un retraso
-            // ya que Twitch carga videos dinámicamente
+        // Inicialización específica para Twitch y TikTok
+        if (platform === 'twitch' || platform === 'tiktok') {
+            // Para Twitch y TikTok, hacer una detección adicional después de un retraso
+            // ya que cargan videos dinámicamente
             setTimeout(() => {
                 const delayedVideos = findVideos();
                 if (delayedVideos.length > 0) {
